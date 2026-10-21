@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识宇宙 · Knowledge Universe</title>
+<style>
+:root{
+  --bg:#05070d;
+  --panel:rgba(11,14,24,.74);
+  --panel-solid:#0b0e18;
+  --line:rgba(255,255,255,.12);
+  --line-soft:rgba(255,255,255,.07);
+  --line-strong:rgba(255,255,255,.26);
+  --text:#e9edf8;
+  --muted:#98a0b6;
+  --dim:#6b7386;
+  --warm:#e8a558;
+  --accent:#8fb0ff;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Courier New",monospace;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;color:inherit}
+
+/* ================= 宇宙画布 ================= */
+#stageWrap{position:fixed;inset:0;z-index:0;cursor:grab;touch-action:none;--k:1}
+#stageWrap.dragging{cursor:grabbing}
+#stage{display:block;width:100%;height:100%;pointer-events:none}
+#stage *{pointer-events:none}
+#stage .glabel text{pointer-events:all;cursor:pointer}
+.glabel:hover .glbl-cn{fill:#fff}
+
+#stage .pt-hit{fill:transparent;pointer-events:all;cursor:pointer}
+.pt-halo{opacity:.85;transition:opacity .25s}
+.pt-body{opacity:.94;transition:opacity .25s}
+.pt-rim{transition:stroke-opacity .2s}
+.pt.dim{opacity:.12}
+.pt:hover .pt-halo,.pt.hover .pt-halo{opacity:1}
+.pt:hover .pt-body,.pt.hover .pt-body{opacity:1}
+.pt.loading .pt-halo{animation:haloPulse 1.5s ease-in-out infinite}
+@keyframes haloPulse{0%,100%{opacity:.35}50%{opacity:1}}
+/* 星系核心：缓慢呼吸 */
+.core-halo{animation:coreBreath 8s ease-in-out infinite}
+@keyframes coreBreath{0%,100%{opacity:.72}50%{opacity:1}}
+
+/* 标签：反向缩放，保持屏幕字号恒定 */
+.pt-lbl,.glbl,.glbl-en{text-anchor:middle;font-family:var(--mono)}
+.pt-lbl{font-size:calc(11px / var(--k));letter-spacing:.02em;fill:#c9d2e6;transition:opacity .25s}
+.pt-lbl-sub{font-size:calc(8.5px / var(--k));letter-spacing:.16em;fill:#6f7a92;text-transform:uppercase}
+.glbl-cn{font-size:calc(23px / var(--k));letter-spacing:.06em;fill:#f0f3fb;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+.glbl-en{font-size:calc(8.5px / var(--k));letter-spacing:.42em;fill:#7b849b}
+.glbl-cnt{font-size:calc(8.5px / var(--k));letter-spacing:.24em;fill:#5f6879}
+.labels-off .pt-lbl{opacity:0}
+.zoomed-out .pt-lbl{opacity:0}
+.zoomed-out .pt:hover .pt-lbl,.pt:hover .pt-lbl{opacity:1}
+.pt:hover .pt-lbl{fill:#fff}
+
+/* ================= 顶栏 ================= */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:20;padding:18px 24px;
+  display:flex;align-items:flex-start;gap:20px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,7,13,.86),rgba(5,7,13,0));
+}
+.topbar > *{pointer-events:auto}
+.title-block{flex:none;min-width:190px}
+.title-block h1{font-size:21px;font-weight:500;letter-spacing:.16em}
+.title-block .en{font-family:var(--mono);font-size:9.5px;letter-spacing:.42em;color:var(--dim);margin-top:5px}
+.title-block .meta{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:10px;line-height:1.9;letter-spacing:.04em}
+.title-block .meta i{color:var(--muted);font-style:normal}
+
+.tools{flex:1;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.search{
+  display:flex;align-items:center;gap:9px;height:36px;padding:0 14px;min-width:230px;flex:0 1 320px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(16px);
+  transition:border-color .2s,box-shadow .2s;
+}
+.search:focus-within{border-color:rgba(143,176,255,.6);box-shadow:0 0 0 3px rgba(143,176,255,.1)}
+.search svg{flex:none;opacity:.5}
+.search input{flex:1;background:none;border:none;outline:none;font-size:13px}
+.search input::placeholder{color:var(--dim)}
+.pill{
+  height:36px;padding:0 13px;display:inline-flex;align-items:center;gap:7px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(16px);
+  font-size:12.5px;cursor:pointer;transition:.18s;white-space:nowrap;
+}
+.pill:hover{border-color:var(--line-strong);background:rgba(22,27,42,.86)}
+.pill .k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.pill .v{color:var(--text)}
+.pill .v.on{color:var(--warm)}
+.pill.primary{background:rgba(232,165,88,.14);border-color:rgba(232,165,88,.42)}
+.pill.primary:hover{background:rgba(232,165,88,.22);border-color:rgba(232,165,88,.7)}
+.pill.solid{background:linear-gradient(150deg,#c98c47,#e8a558);border-color:transparent;color:#1b1206;font-weight:500}
+.pill.solid:hover{filter:brightness(1.08)}
+.hidden{display:none!important}
+
+/* ================= 目录面板 ================= */
+.dir{
+  position:fixed;left:24px;top:132px;bottom:96px;width:302px;z-index:10;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  backdrop-filter:blur(18px);display:flex;flex-direction:column;overflow:hidden;
+}
+.dir-head{
+  display:flex;align-items:center;gap:10px;padding:15px 18px 13px;border-bottom:1px solid var(--line-soft);
+  font-size:13.5px;letter-spacing:.1em;
+}
+.dir-head b{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--dim);letter-spacing:.1em}
+.dir-head .cnt{flex:1;text-align:right;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.dir-list{flex:1;overflow-y:auto;padding:6px 10px 16px}
+.dir-list::-webkit-scrollbar{width:6px}
+.dir-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+.grp{margin-top:12px}
+.grp-head{display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:11px;color:var(--muted);letter-spacing:.14em}
+.grp-head i{width:6px;height:6px;border-radius:50%;background:var(--gh);box-shadow:0 0 8px var(--gh);font-style:normal}
+.grp-head span{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:.2em;margin-left:auto}
+.item{
+  display:flex;gap:10px;align-items:baseline;padding:8px 10px;border-radius:9px;cursor:pointer;
+  transition:.16s;border:1px solid transparent;
+}
+.item:hover{background:rgba(255,255,255,.04)}
+.item.on{background:rgba(232,165,88,.1);border-color:rgba(232,165,88,.3)}
+.item .no{font-family:var(--mono);font-size:10px;color:var(--dim);width:16px;flex:none}
+.item.on .no{color:var(--warm)}
+.item .tx{font-size:12.5px;color:#c9d1e2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.on .tx{color:#f3e3cd}
+.item .gt{font-family:var(--mono);font-size:9px;color:#4d5566;margin-left:auto;letter-spacing:.1em}
+.dir-empty{padding:26px 14px;text-align:center;color:var(--dim);font-size:12px}
+
+/* ================= 详情面板 ================= */
+.detail{
+  position:fixed;right:24px;top:132px;bottom:96px;width:min(790px,calc(100vw - 48px));z-index:30;
+  background:linear-gradient(165deg,rgba(13,17,28,.94),rgba(8,11,19,.96));
+  border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(22px);
+  box-shadow:-30px 20px 70px rgba(0,0,0,.55);
+  display:none;flex-direction:column;overflow:hidden;
+}
+.detail.on{display:flex;animation:slideIn .3s cubic-bezier(.3,0,.2,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+.d-head{display:flex;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line-soft)}
+.crumb{flex:1;font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumb b{color:var(--text);font-weight:400}
+.d-body{flex:1;display:flex;min-height:0}
+.d-toc{width:216px;flex:none;border-right:1px solid var(--line-soft);display:flex;flex-direction:column;min-height:0}
+.d-toc-head{padding:14px 18px 10px;font-size:12px;color:var(--muted);letter-spacing:.14em;display:flex}
+.d-toc-head b{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--dim)}
+.d-toc-list{flex:1;overflow-y:auto;padding:4px 10px 18px}
+.d-toc-list::-webkit-scrollbar{width:6px}
+.d-toc-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:3px}
+.d-main{flex:1;overflow-y:auto;padding:26px 30px 30px;min-width:0}
+.d-main::-webkit-scrollbar{width:8px}
+.d-main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
+
+.hero{display:flex;gap:16px;align-items:flex-start;margin-bottom:8px}
+.hero .bar{width:4px;flex:none;align-self:stretch;border-radius:2px;background:var(--gh);min-height:86px;box-shadow:0 0 18px var(--gh)}
+.hero .en{font-family:var(--mono);font-size:10.5px;letter-spacing:.4em;color:var(--gh);margin:2px 0 8px;text-transform:uppercase}
+.hero h2{font-size:33px;font-weight:500;letter-spacing:.04em;line-height:1.25}
+.hero .sys{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:var(--dim);margin-top:9px}
+.hero .xhair{flex:none;margin-left:auto;width:54px;height:54px}
+.xhair circle,.xhair path{fill:none;stroke:var(--muted);stroke-width:1;opacity:.75}
+.hero .xhair:hover circle,.hero .xhair:hover path{stroke:var(--warm);opacity:1}
+.xhair{cursor:pointer}
+
+.tags{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0 0}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:2px 11px;letter-spacing:.04em}
+
+.sec{margin-top:22px}
+.sec-h{font-family:var(--mono);font-size:10px;letter-spacing:.34em;color:var(--dim);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.sec-h::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.p{font-size:14px;line-height:1.95;color:#d3dbec;margin-bottom:12px;transition:.25s;padding-left:0}
+.p.head{color:var(--warm);font-size:13px;letter-spacing:.04em;margin-bottom:16px}
+.p.mark{background:rgba(232,165,88,.09);box-shadow:inset 3px 0 0 var(--warm);padding-left:12px;border-radius:3px}
+
+.card{border:1px solid var(--line);border-radius:12px;padding:18px 20px;background:rgba(255,255,255,.02);margin-top:24px}
+.card-h{font-size:13.5px;margin-bottom:14px;letter-spacing:.06em}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.b{border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:9px;padding:9px 16px;font-size:12.5px;cursor:pointer;transition:.16s}
+.b:hover{border-color:var(--line-strong);background:rgba(255,255,255,.06)}
+.b.accent{border-color:rgba(232,165,88,.42);color:#f0d3a6}
+.b.accent:hover{background:rgba(232,165,88,.14)}
+.b.danger:hover{border-color:rgba(255,120,120,.55);color:#ffc9c9;background:rgba(255,120,120,.1)}
+
+.form{margin-top:20px}
+.f{margin-bottom:16px}
+.f label{display:block;font-size:11px;font-family:var(--mono);letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:7px}
+.f input,.f select,.f textarea{
+  width:100%;background:rgba(6,9,16,.85);border:1px solid var(--line);border-radius:9px;
+  padding:10px 13px;font-size:13.5px;outline:none;transition:.18s;
+}
+.f textarea{min-height:230px;resize:vertical;line-height:1.8}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:rgba(143,176,255,.6);box-shadow:0 0 0 3px rgba(143,176,255,.1)}
+.f select option{background:var(--panel-solid)}
+.tagbox{display:flex;flex-wrap:wrap;gap:7px;align-items:center;background:rgba(6,9,16,.85);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.tagbox input{border:none;background:none;padding:4px 2px;flex:1;min-width:120px;box-shadow:none!important}
+.tg{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#cfd9f0;background:rgba(143,176,255,.13);border:1px solid rgba(143,176,255,.26);border-radius:20px;padding:2px 9px}
+.tg b{cursor:pointer;font-weight:400;opacity:.6}
+.tg b:hover{opacity:1;color:#ffb3b3}
+.src{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.9;letter-spacing:.04em;margin-top:18px}
+.src a{color:#a9c1ff;text-decoration:none;border-bottom:1px dashed rgba(169,193,255,.45)}
+.d-foot{
+  display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:1px solid var(--line-soft);
+  background:rgba(6,9,16,.5);
+}
+.d-foot .spacer{flex:1}
+.d-hint{font-family:var(--mono);font-size:10px;color:#4d5566;letter-spacing:.1em}
+.d-status{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.d-status.ok{color:#8ee0b6}
+.d-status.err{color:#ff9d9d}
+
+/* ================= 新建星球 ================= */
+.creator{
+  position:fixed;left:50%;transform:translateX(-50%);top:118px;width:min(660px,calc(100vw - 40px));z-index:40;
+  background:linear-gradient(165deg,rgba(14,18,30,.96),rgba(8,11,19,.97));
+  border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(22px);
+  box-shadow:0 30px 70px rgba(0,0,0,.6);display:none;overflow:hidden;
+}
+.creator.on{display:block;animation:dropIn .28s cubic-bezier(.3,0,.2,1)}
+@keyframes dropIn{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+.c-row{display:flex;gap:10px;padding:18px 22px 12px;flex-wrap:wrap}
+.c-row input[type=text]{
+  flex:1;min-width:260px;background:rgba(6,9,16,.85);border:1px solid var(--line);border-radius:9px;
+  padding:12px 14px;font-size:15px;outline:none;transition:.18s;
+}
+.c-row input[type=text]:focus{border-color:rgba(143,176,255,.6);box-shadow:0 0 0 3px rgba(143,176,255,.1)}
+.c-row select{background:rgba(6,9,16,.85);border:1px solid var(--line);border-radius:9px;padding:0 12px;font-size:12.5px;outline:none;cursor:pointer}
+.c-row select option{background:var(--panel-solid)}
+#cContent{
+  display:none;width:calc(100% - 44px);margin:0 22px 12px;min-height:110px;resize:vertical;
+  background:rgba(6,9,16,.85);border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+  font-size:13.5px;line-height:1.75;outline:none;
+}
+.c-foot{display:flex;align-items:center;gap:10px;padding:0 22px 18px;flex-wrap:wrap}
+.c-foot .tip{font-size:11.5px;color:var(--dim);flex:1}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:3px 11px;cursor:pointer;transition:.16s}
+.chip:hover{color:var(--text);border-color:var(--line-strong);background:rgba(255,255,255,.05)}
+
+/* ================= 缩放条 ================= */
+.zoombar{
+  position:fixed;left:24px;bottom:24px;z-index:15;display:flex;align-items:center;gap:8px;
+}
+.zbtn{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;
+  backdrop-filter:blur(16px);color:var(--muted);transition:.16s;
+}
+.zbtn:hover{border-color:var(--line-strong);color:var(--text);background:rgba(22,27,42,.9)}
+.zinfo{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);
+  padding:0 10px;height:36px;display:flex;align-items:center;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(16px);
+}
+.legend{
+  position:fixed;right:24px;bottom:24px;z-index:15;font-family:var(--mono);font-size:10px;color:#4d5566;
+  letter-spacing:.14em;text-align:right;pointer-events:none;
+}
+.toast{
+  position:fixed;left:50%;bottom:76px;transform:translate(-50%,14px);z-index:60;
+  background:rgba(14,18,30,.96);border:1px solid var(--line-strong);border-radius:11px;
+  padding:11px 20px;font-size:13px;box-shadow:0 16px 44px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:.25s;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:1180px){
+  .dir{width:262px}
+  .detail{width:calc(100vw - 48px)}
+}
+@media(max-width:820px){
+  .topbar{padding:12px;gap:10px}
+  .title-block{min-width:0}
+  .title-block h1{font-size:17px}
+  .title-block .meta{display:none}
+  .search{min-width:140px;flex:1 1 160px;order:9;width:100%}
+  .tools{gap:7px}
+  .pill{padding:0 10px}
+  .pill .k{display:none}
+  .dir{left:12px;right:12px;width:auto;top:auto;bottom:84px;height:44vh}
+  .detail{left:12px;right:12px;width:auto;top:80px;bottom:12px}
+  .d-body{flex-direction:column}
+  .d-toc{width:auto;border-right:none;border-bottom:1px solid var(--line-soft);max-height:132px}
+  .zoombar{left:12px;bottom:12px}
+  .legend{display:none}
+  .creator{top:76px}
+}
+</style>
+</head>
+<body>
+
+<div id="stageWrap"><svg id="stage"></svg></div>
+
+<header class="topbar">
+  <div class="title-block">
+    <h1>知识宇宙</h1>
+    <div class="en">KNOWLEDGE UNIVERSE</div>
+    <div class="meta" id="tMeta">—</div>
+  </div>
+  <div class="tools">
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <input id="searchInput" type="text" placeholder="搜索星球、标签或内容…">
+    </div>
+    <button class="pill hidden" id="focusBtn"><span class="k">聚焦</span><span class="v" id="focusTxt">—</span></button>
+    <button class="pill" id="dirBtn"><span class="k">目录</span><span class="v on" id="dirTxt">显示</span></button>
+    <button class="pill" id="lblBtn"><span class="k">标注</span><span class="v on" id="lblTxt">显示</span></button>
+    <button class="pill primary" id="newBtn"><span class="v">＋ 新建星球</span></button>
+  </div>
+</header>
+
+<aside class="dir" id="dir">
+  <div class="dir-head">
+    <span>目录</span><b>CATALOG</b>
+    <span class="cnt" id="dirCnt">0</span>
+  </div>
+  <div class="dir-list" id="dirList"></div>
+</aside>
+
+<section class="detail" id="detail">
+  <div class="d-head">
+    <div class="crumb" id="dCrumb">—</div>
+    <button class="pill" id="dClose">关闭 ✕</button>
+  </div>
+  <div class="d-body">
+    <aside class="d-toc">
+      <div class="d-toc-head"><span>目录</span><b id="dTocN">0</b></div>
+      <div class="d-toc-list" id="dTocList"></div>
+    </aside>
+    <div class="d-main" id="dMain"></div>
+  </div>
+  <div class="d-foot">
+    <button class="pill" id="dPrev"><span class="v">← 上一颗</span></button>
+    <button class="pill" id="dLocate"><span class="v">定位到星图</span></button>
+    <button class="pill" id="dNext"><span class="v">下一颗 →</span></button>
+    <span class="spacer"></span>
+    <span class="d-status" id="dStatus"></span>
+  </div>
+</section>
+
+<section class="creator" id="creator">
+  <div class="c-row">
+    <input id="cName" type="text" placeholder="输入知识标签，如「苏轼的诗歌风格」">
+    <select id="cGalaxy"><option value="">自动归类星系</option></select>
+    <select id="cMode">
+      <option value="auto">自动检索内容</option>
+      <option value="manual">我来写内容</option>
+    </select>
+  </div>
+  <textarea id="cContent" placeholder="粘贴或撰写这颗星球的知识内容（选填；留空则调用百度百科 API 自动填充）…"></textarea>
+  <div class="c-foot">
+    <span class="tip">回车生成 · Esc 取消</span>
+    <div class="chips" id="cChips"></div>
+    <button class="pill solid" id="cCreate"><span class="v">生成星球</span></button>
+  </div>
+</section>
+
+<div class="zoombar">
+  <button class="zbtn" id="zOut" title="缩小">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+  </button>
+  <button class="zbtn" id="zIn" title="放大">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <button class="zbtn" id="zFit" title="适应全部">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+  <div class="zinfo" id="zInfo">100%</div>
+</div>
+
+<div class="legend">拖拽平移 · 滚轮缩放 · 点击星球查看知识</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   知识宇宙 — 单文件应用
+   · 所有星系共存于一块连续的可平移/缩放的星空画布（SVG 世界坐标）
+   · 星球为半透明、边缘发光的球体；标签反向缩放保持恒定屏幕字号
+   · 内容自动检索：百度百科开放接口（JSONP，国内直连）→ 维基百科（CORS）→ 写作提纲
+   · 数据保存在浏览器 localStorage（key: kuniverse.v1）
+   ===================================================================== */
+
+/* ---------------- 星系与归类规则 ---------------- */
+const GALAXIES = [
+  { key:'literature', name:'文学', code:'LITERATURE', hue:34, x:1050, y:900,  R:440, tilt:-15,
+    kw:['文学','小说','诗','诗歌','词','散文','作家','诗人','文豪','修辞','宋词','唐诗','元曲','赋','文风','风格','苏轼','李白','杜甫','鲁迅','红楼梦','名著','书评','作品'] },
+  { key:'history', name:'历史', code:'HISTORY', hue:14, x:2820, y:640, R:410, tilt:11,
+    kw:['历史','朝代','王朝','皇帝','战争','战役','革命','帝国','古代','近代','民国','唐宋','秦汉','明清','考古','遗址','八大家','变法','史记','编年'] },
+  { key:'science', name:'科学', code:'SCIENCE', hue:198, x:4620, y:1220, R:440, tilt:-7,
+    kw:['科学','物理','化学','生物','数学','量子','相对论','分子','原子','基因','细胞','天文','宇宙','黑洞','熵','定律','实验','定理','方程','能量','演化','神经'] },
+  { key:'tech', name:'科技', code:'TECH', hue:262, x:4460, y:2820, R:420, tilt:14,
+    kw:['科技','技术','计算机','算法','人工智能','AI','机器学习','深度学习','编程','代码','互联网','数据','网络安全','芯片','机器人','大模型','神经网络','软件','云计算','区块链'] },
+  { key:'art', name:'艺术', code:'ART', hue:322, x:2560, y:2060, R:480, tilt:-11,
+    kw:['艺术','绘画','油画','国画','音乐','乐器','歌曲','电影','影视','摄影','舞蹈','雕塑','建筑','设计','印象派','色彩','构图','美学','戏剧','书法','审美'] },
+  { key:'philosophy', name:'哲学', code:'PHILOSOPHY', hue:166, x:860, y:2380, R:410, tilt:8,
+    kw:['哲学','思想','伦理','道德','逻辑','宗教','佛','道','儒','主义','存在','理性','意识','认识论','价值观','思辨','辩证','禅'] },
+  { key:'geo', name:'地理', code:'GEOGRAPHY', hue:140, x:1360, y:3560, R:410, tilt:-13,
+    kw:['地理','国家','城市','地图','山脉','河流','海洋','气候','地形','区域','旅行','洲','岛','高原','盆地','沙漠','首都','长安','丝绸之路','经纬'] },
+  { key:'life', name:'生活', code:'LIFE', hue:46, x:3300, y:3640, R:410, tilt:7,
+    kw:['生活','美食','烹饪','健康','运动','健身','营养','养生','饮食','咖啡','茶','发酵','睡眠','情绪','收纳','理财','效率','习惯','手作'] },
+  { key:'misc', name:'综合', code:'MISC', hue:224, x:4700, y:4240, R:360, tilt:0, kw:[] }
+];
+const GALAXY_MAP = Object.fromEntries(GALAXIES.map(g=>[g.key,g]));
+const WORLD = { x:-620, y:-420, w:6200, h:5600 };
+
+/* ---------------- 基础工具 ---------------- */
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const uid = () => 'p' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clamp = (s,n) => { s = String(s??''); return s.length<=n ? s : s.slice(0,n).replace(/[，,；;。.\s]+$/,'') + '…'; };
+const fmtTime = t => {
+  const d=new Date(t), diff=(Date.now()-d)/1000;
+  if(diff<60) return '刚刚';
+  if(diff<3600) return Math.floor(diff/60)+' 分钟前';
+  if(diff<86400) return Math.floor(diff/3600)+' 小时前';
+  if(diff<86400*7) return Math.floor(diff/86400)+' 天前';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function hash(str){ let h=2166136261; for(const ch of str){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0); }
+const planetHue = (g,seed) => (g.hue + (hash(seed)%31 - 15) + 360) % 360;
+const galaxyVar = g => `--gh:hsl(${g.hue} 82% 62%)`;
+
+/* ---------------- 数据层 ---------------- */
+const KEY='kuniverse.v1';
+let planets=[];
+function load(){
+  try{ planets = JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){ planets=[]; }
+  if(!planets.length) planets = seedData();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(planets)); }catch(e){ toast('本地存储失败：'+e.message); } }
+function seedData(){
+  const now=Date.now();
+  const mk=(name,galaxy,tags,content)=>({ id:uid(), name, galaxy, tags, content, source:'seed', createdAt:now, updatedAt:now });
+  return [
+    mk('苏轼的诗歌风格','literature',['文学','苏轼','宋词'],
+      '【苏轼】诗风以豪放旷达为骨，以自然流转为韵。\n主张「以诗为词」，打破词只写儿女情长的旧格局，把人生际遇、山水哲理、仕途感慨统统写进去，气象为之一新。\n· 题材扩大：怀古、田园、哲理、悼亡皆可入词\n· 语言自然：不避俗字口语，如「大江东去」「明月几时有」\n· 风格多元：既有铁板铜琶的豪放，也有「十年生死两茫茫」的深婉\n· 精神底色：屡遭贬谪仍从容自适，旷达中带着清醒的悲悯'),
+    mk('量子纠缠','science',['科学','量子','物理'],
+      '【量子纠缠】两个或多个粒子形成整体关联，无法单独描述其中一个的状态。\n测量其中一个，另一个的状态会瞬时确定，这种关联与距离无关。\n· 核心：整体状态不可分解，纠缠是「关系」而非「信号」\n· 特性：贝尔不等式被违反，说明不存在局域隐变量\n· 应用：量子通信、量子密钥分发、量子计算\n· 提醒：纠缠不能用来超光速传信息，信息仍需经典信道'),
+    mk('印象派绘画','art',['艺术','绘画','印象派'],
+      '【印象派】兴起于十九世纪后期的法国。\n画家走出画室直接对景写生，捕捉光线与空气瞬间的变化，「印象」代替了精细轮廓。\n· 手法：短促笔触、色彩并置、外光写生\n· 代表：莫奈、雷诺阿、德加、毕沙罗\n· 突破：颠覆学院派对题材与完成度的标准，把「看的方式」变成画的主题'),
+    mk('存在主义','philosophy',['哲学','存在','自由'],
+      '【存在主义】「存在先于本质」：人先存在，再通过选择定义自己是什么。\n代表：萨特、加缪、海德格尔、波伏娃。\n· 核心：人被抛入世界，须自行承担选择的责任\n· 关键概念：荒诞、自由、本真性、他人即地狱\n· 启示：意义不是被发现，而是被创造出来的'),
+    mk('发酵与风味','life',['生活','美食','发酵'],
+      '【发酵】微生物对有机物的分解与转化，也是人类最古老的食品加工方式之一。\n它决定了面包、酒、酱、奶酪、泡菜的风味骨架。\n· 乳酸发酵：泡菜、酸奶，酸味清爽\n· 酒精发酵：酵母产乙醇与二氧化碳，酿酒、发面\n· 氨基酸转化：酱油、豆酱的鲜味来源\n· 关键变量：温度、盐度、氧气、时间'),
+    mk('唐宋八大家','history',['历史','唐宋','散文'],
+      '【唐宋八大家】唐代韩愈、柳宗元与宋代欧阳修、苏洵、苏轼、苏辙、王安石、曾巩八位散文家的合称。\n因明代茅坤编《唐宋八大家文钞》而得名。\n· 主张：反对骈文浮华，提倡「文以载道」的散体古文\n· 贡献：完成古文运动，确立此后千年的散文范式\n· 影响：八家之文成为后世科举与写作的经典范本'),
+    mk('大语言模型','tech',['科技','大模型','人工智能'],
+      '【大语言模型】以海量文本训练的深度神经网络，通过预测下一个词学习语言规律。\n能力来自规模、数据与训练方法的结合，而非人工规则。\n· 基础：Transformer 架构与自注意力机制\n· 训练：预训练 + 指令微调 + 人类反馈对齐\n· 能力：生成、摘要、翻译、推理、代码\n· 局限：可能幻觉、知识有截止时间、上下文有限'),
+    mk('丝绸之路','geo',['地理','历史','长安'],
+      '【丝绸之路】连接东亚与地中海世界的陆上交通网络，自长安出发经河西走廊通向中亚。\n1877 年由德国地理学家李希霍芬命名。\n· 意义：商品、宗教、技术与艺术的双向流动\n· 节点：长安、敦煌、撒马尔罕、巴格达\n· 遗产：佛教东传、造纸术西传、石窟艺术')
+  ];
+}
+function autoClassify(text){
+  const t=(text||'').toLowerCase(); let best='misc', score=0;
+  for(const g of GALAXIES){
+    let s=0;
+    for(const k of g.kw) if(t.includes(k.toLowerCase())) s += 1 + Math.min(k.length/3, 1.6);
+    if(s>score){ score=s; best=g.key; }
+  }
+  return best;
+}
+function autoTags(name, galaxyKey, extra){
+  const g=GALAXY_MAP[galaxyKey]||GALAXY_MAP.misc;
+  const out=[g.name];
+  const parts=(name||'').split(/[的与和、,，\/\s｜|]+/).map(s=>s.trim())
+    .filter(s=>s.length>=2 && !['风格','内容','简介','特点'].includes(s));
+  for(const p of parts) if(!out.includes(p)) out.push(p);
+  for(const e of (extra||[])) if(e && !out.includes(e)) out.push(e);
+  return out.slice(0,5);
+}
+
+/* ---------------- 内容检索 ---------------- */
+function queryVariants(name){
+  const out=[name];
+  const stripped=name.replace(/[的]?(诗歌|写作|风格|特点|特征|内容|简介|概述|分析|研究|方法|原理|作用|影响|意义|发展|介绍|是什么|有哪些|绘画|艺术|音乐|历史)?[？?]?$/g,'').trim();
+  if(stripped.length>=2 && stripped!==name) out.push(stripped);
+  const beforeDe=name.split('的')[0].trim();
+  if(beforeDe.length>=2 && beforeDe!==name) out.push(beforeDe);
+  return [...new Set(out)].slice(0,3);
+}
+function jsonp(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const cb='__ku_cb_'+Math.random().toString(36).slice(2,10);
+    const s=document.createElement('script');
+    const timer=setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, timeout||6000);
+    function cleanup(){ clearTimeout(timer); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } s.remove(); }
+    window[cb]=data=>{ cleanup(); resolve(data); };
+    s.onerror=()=>{ cleanup(); reject(new Error('network')); };
+    s.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    document.head.appendChild(s);
+  });
+}
+async function fetchBaike(term){
+  const url='https://baike.baidu.com/api/openapi/BaikeLemmaCardApi?scope=103&format=json&appid=379020'
+    +'&bk_length=900&bk_key='+encodeURIComponent(term);
+  const d=await jsonp(url, 6000);
+  if(!d || !d.abstract) return null;
+  const body=String(d.abstract).replace(/\s+/g,' ').trim();
+  if(body.length<40) return null;
+  const title=d.key||d.title||term;
+  return {
+    title,
+    content: `【${title}】${d.desc?' · '+d.desc:''}\n`
+      + clamp(body.replace(/([。！？；])\s*/g,'$1\n').trim(), 900),
+    url: String(d.url||d.wapUrl||'').replace(/^http:/,'https:'),
+    sourceLabel:'百度百科'
+  };
+}
+async function fetchWiki(term, host, label){
+  const q=`https://${host}/w/api.php?action=query&format=json&origin=*`
+    + `&generator=search&gsrsearch=${encodeURIComponent(term)}&gsrlimit=1`
+    + `&prop=extracts|info&inprop=url&explaintext=1&exintro=1&exsentences=6&exlimit=1&redirects=1`;
+  const ctl=new AbortController(); const timer=setTimeout(()=>ctl.abort(), 7000);
+  try{
+    const res=await fetch(q,{signal:ctl.signal});
+    if(!res.ok) return null;
+    const json=await res.json();
+    const pages=json&&json.query&&json.query.pages;
+    if(!pages) return null;
+    const page=Object.values(pages)[0];
+    const text=(page.extract||'').trim();
+    if(text.length<60) return null;
+    return { title:page.title,
+      content:`【${page.title}】\n`+clamp(text.replace(/\s+/g,' ').replace(/([。！？；])\s*/g,'$1\n').trim(), 900),
+      url:page.fullurl||'', sourceLabel:label };
+  }finally{ clearTimeout(timer); }
+}
+async function fetchKnowledge(term){
+  const variants=queryVariants(term);
+  const baike=await Promise.all(variants.map(v=>fetchBaike(v).catch(()=>null)));
+  const hit=baike.find(Boolean);
+  if(hit) return hit;
+  const key=variants[variants.length-1];
+  try{ const r=await fetchWiki(key,'zh.wikipedia.org','中文维基百科'); if(r) return r; }catch(e){}
+  try{ const r=await fetchWiki(key,'en.wikipedia.org','英文维基百科'); if(r) return r; }catch(e){}
+  return null;
+}
+function fallbackContent(name, galaxyKey){
+  const g=GALAXY_MAP[galaxyKey]||GALAXY_MAP.misc;
+  return `【${name}】\n所属星系：${g.name}\n未从百度百科 / 维基百科检索到可用资料，这颗星球的内容还等待你来点亮。\n· 它是什么：一句话定义\n· 关键要点：3—5 条核心结论\n· 应用或例子：一个具体场景\n· 延伸阅读：相关书籍、文章或人物`;
+}
+const isPending = p => p.source==='pending';
+
+/* ---------------- 星球尺寸与轨道槽位 ---------------- */
+function ringSlots(n){
+  const caps=[5,7,9,11], slots=[];
+  for(let r=0;r<caps.length && slots.length<n;r++){
+    const count=Math.min(caps[r], n-slots.length);
+    for(let i=0;i<count;i++) slots.push({ring:r, index:i, total:count});
+  }
+  return slots;
+}
+const planetR = (g,name,ring) => 13 + (hash(name)%7) + ring*2.4;
+const ringRadii = (R, rings) => rings===1 ? [R*0.62]
+  : Array.from({length:rings},(_,i)=> R*(0.4 + i*(0.6/(rings-1))));
+const ELL = 0.52;                       // 轨道椭圆扁平比（参考图的横向带状）
+
+/* ---------------- 星空背景（静态层） ---------------- */
+function bgLayers(){
+  const rnd=mulberry32(20261019);
+  const W=WORLD;
+  let far='', dust='', near='';
+  // 星云
+  const nebs=[[0.16,90],[0.56,198],[0.86,322],[0.36,262],[0.72,140]];
+  nebs.forEach(([fx,hue],i)=>{
+    const cx=W.x+W.w*fx, cy=W.y+W.h*(0.2+0.62*((i*0.23)%1));
+    far+=`<circle cx="${cx.toFixed(0)}" cy="${cy.toFixed(0)}" r="${(520+i*90)}" fill="url(#neb${i})"/>`;
+  });
+  // 银河尘带
+  dust+=`<g transform="rotate(-15 ${W.x+W.w/2} ${W.y+W.h*0.44})">`
+    +`<rect x="${W.x-1400}" y="${W.y+W.h*0.44-260}" width="${W.w+2800}" height="520" fill="url(#dustGrad)"/></g>`;
+  // 星星
+  const band1=W.y+W.h*0.44, band2=W.y+W.h*0.86;
+  for(let i=0;i<620;i++){
+    const dense=i%3!==0;
+    const inBand = i%4===0;
+    const x=W.x+rnd()*W.w;
+    const y=inBand ? band1+(rnd()-0.5)*560 : (i%7===0 ? band2+(rnd()-0.5)*420 : W.y+rnd()*W.h);
+    const r=(0.6+rnd()*1.5).toFixed(2), o=(dense?0.25:0.12)+rnd()*0.55;
+    const flare = rnd()>0.985;
+    const c = flare ? '#ffffff' : (rnd()>0.7 ? '#cfe0ff' : '#9fb4d8');
+    const el=`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${flare?r*1.6:r}" fill="${c}" opacity="${o.toFixed(2)}"/>`;
+    let chunk=el;
+    if(flare){
+      const R=r*9;
+      chunk += `<g opacity="${(o+0.15).toFixed(2)}"><path d="M${(x-R).toFixed(0)} ${y.toFixed(0)}H${(x+R).toFixed(0)}M${x.toFixed(0)} ${(y-R).toFixed(0)}V${(y+R).toFixed(0)}" stroke="#fff" stroke-width="0.5"/></g>`;
+    }
+    if(flare){ if(i%2) near+=chunk; else dust+=chunk; }
+    else if(i%5===0) near+=chunk;
+    else dust+=chunk;
+  }
+  let defs='';
+  nebs.forEach(([fx,hue],i)=>{
+    defs+=`<radialGradient id="neb${i}"><stop offset="0" stop-color="hsl(${hue} 70% 60%)" stop-opacity=".10"/>`
+      +`<stop offset=".55" stop-color="hsl(${hue} 70% 55%)" stop-opacity=".04"/>`
+      +`<stop offset="1" stop-color="hsl(${hue} 70% 50%)" stop-opacity="0"/></radialGradient>`;
+  });
+  defs+=`<linearGradient id="dustGrad" x1="0" y1="0" x2="0" y2="1">`
+    +`<stop offset="0" stop-color="#8fa8d8" stop-opacity="0"/>`
+    +`<stop offset=".42" stop-color="#a8c0e8" stop-opacity=".10"/>`
+    +`<stop offset=".58" stop-color="#c9d8f5" stop-opacity=".13"/>`
+    +`<stop offset="1" stop-color="#8fa8d8" stop-opacity="0"/></linearGradient>`;
+  return { defs, far, dust, near };
+}
+
+/* ---------------- 世界（星系簇 + 星球） ---------------- */
+function buildWorld(){
+  let defs='', out='';
+  const orbs=[];
+  const used=new Set(planets.map(p=>p.galaxy));
+  for(const g of GALAXIES){
+    if(!used.has(g.key)) continue;
+    const items=planets.filter(p=>p.galaxy===g.key).sort((a,b)=>b.updatedAt-a.updatedAt);
+    const slots=ringSlots(items.length);
+    const rings=Math.max(...slots.map(s=>s.ring))+1;
+    const radii=ringRadii(g.R, rings);
+
+    // 星系光晕 + 核心恒星
+    defs+=`<radialGradient id="coreH-${g.key}"><stop offset="0" stop-color="hsl(${g.hue} 90% 72%)" stop-opacity=".42"/>`
+      +`<stop offset=".4" stop-color="hsl(${g.hue} 90% 66%)" stop-opacity=".13"/>`
+      +`<stop offset="1" stop-color="hsl(${g.hue} 90% 60%)" stop-opacity="0"/></radialGradient>`
+      +`<radialGradient id="coreB-${g.key}"><stop offset="0" stop-color="#fff" stop-opacity=".95"/>`
+      +`<stop offset=".55" stop-color="hsl(${g.hue} 90% 76%)" stop-opacity=".85"/>`
+      +`<stop offset="1" stop-color="hsl(${g.hue} 88% 60%)" stop-opacity=".5"/></radialGradient>`;
+
+    let s=`<g class="cluster" data-gal="${g.key}">`;
+    s+=`<circle class="core-halo" cx="${g.x}" cy="${g.y}" r="${g.R*2.15}" fill="url(#coreH-${g.key})"/>`;
+    // 轨道椭圆（随星系倾斜）
+    let orbits='';
+    for(let r=0;r<rings;r++){
+      orbits+=`<ellipse cx="${g.x}" cy="${g.y}" rx="${radii[r].toFixed(1)}" ry="${(radii[r]*ELL).toFixed(1)}" `
+        +`fill="none" stroke="hsl(${g.hue} 60% 70%)" stroke-opacity=".16" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    }
+    s+=`<g transform="rotate(${g.tilt} ${g.x} ${g.y})">${orbits}</g>`;
+    // 核心
+    s+=`<circle cx="${g.x}" cy="${g.y}" r="62" fill="url(#coreH-${g.key})"/>`
+      +`<circle cx="${g.x}" cy="${g.y}" r="11" fill="url(#coreB-${g.key})"/>`
+      +`<circle cx="${g.x}" cy="${g.y}" r="16" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+      +`<g opacity=".7" stroke="hsl(${g.hue} 90% 82%)" stroke-width="0.8" vector-effect="non-scaling-stroke">`
+      +`<path d="M${g.x-58} ${g.y}H${g.x+58}M${g.x} ${g.y-58}V${g.y+58}"/></g>`;
+    // 星球（半透明、边缘发光的球体）
+    const T=g.tilt*Math.PI/180, cosT=Math.cos(T), sinT=Math.sin(T);
+    slots.forEach((slot,i)=>{
+      const p=items[i]; if(!p) return;
+      const hue=planetHue(g,p.name);
+      const ang=(360/slot.total)*slot.index - 90 + slot.ring*17;
+      const rad=ang*Math.PI/180;
+      const rx=radii[slot.ring], ry=rx*ELL;
+      const ex=Math.cos(rad)*rx, ey=Math.sin(rad)*ry;                 // 未旋转的椭圆坐标
+      const px=g.x + ex*cosT - ey*sinT;                               // 随星系倾角旋转
+      const py=g.y + ex*sinT + ey*cosT;
+      const R=planetR(g,p.name,slot.ring);
+      // 环绕：内圈更快；按 id 做确定性微差异，避免所有星球同步转动
+      const w=ringSpeed(slot.ring)*(0.85+0.3*((hash(p.id)%100)/100));
+      orbs.push({ id:p.id, ang, w, gx:g.x, gy:g.y, rx, ry, cosT, sinT, bx:px, by:py, px, py, r:R });
+      const cls='pt'+(isPending(p)?' loading':'');
+      const cx=px.toFixed(1), cy=py.toFixed(1);
+      defs+=`<radialGradient id="ha-${p.id}"><stop offset="0" stop-color="hsl(${hue} 92% 66%)" stop-opacity=".34"/>`
+        +`<stop offset=".45" stop-color="hsl(${hue} 92% 62%)" stop-opacity=".13"/>`
+        +`<stop offset="1" stop-color="hsl(${hue} 92% 58%)" stop-opacity="0"/></radialGradient>`
+        +`<radialGradient id="bd-${p.id}"><stop offset="0" stop-color="hsl(${hue} 95% 92%)" stop-opacity=".30"/>`
+        +`<stop offset=".5" stop-color="hsl(${hue} 82% 62%)" stop-opacity=".20"/>`
+        +`<stop offset=".8" stop-color="hsl(${hue} 86% 64%)" stop-opacity=".40"/>`
+        +`<stop offset="1" stop-color="hsl(${hue} 92% 74%)" stop-opacity=".70"/></radialGradient>`;
+      s+=`<g class="${cls}" data-id="${p.id}" style="--gh:hsl(${hue} 82% 62%)">`
+        +`<circle class="pt-halo" cx="${cx}" cy="${cy}" r="${(R*2.7).toFixed(1)}" fill="url(#ha-${p.id})"/>`
+        +`<circle class="pt-body" cx="${cx}" cy="${cy}" r="${R.toFixed(1)}" fill="url(#bd-${p.id})"/>`
+        +`<circle class="pt-rim" cx="${cx}" cy="${cy}" r="${R.toFixed(1)}" fill="none" stroke="hsl(${hue} 96% 84%)" stroke-opacity=".85" stroke-width="1.1" vector-effect="non-scaling-stroke"/>`
+        +`<ellipse class="pt-shine" cx="${(px-R*0.32).toFixed(1)}" cy="${(py-R*0.36).toFixed(1)}" rx="${(R*0.26).toFixed(1)}" ry="${(R*0.15).toFixed(1)}" fill="#fff" opacity=".45"/>`
+        +`<text class="pt-lbl" x="${cx}" y="${(py+R+16).toFixed(1)}">${esc(p.name)}</text>`
+        +`<text class="pt-lbl pt-lbl-sub" x="${cx}" y="${(py+R+29).toFixed(1)}">${isPending(p)?'检索中…':esc(g.code)}</text>`
+        +`<circle class="pt-hit" cx="${cx}" cy="${cy}" r="${Math.max(R*2.1,26).toFixed(1)}"/>`
+        +`</g>`;
+    });
+    // 星系标签
+    s+=`<g class="glabel" data-gal="${g.key}">
+        <text class="glbl-cn" x="${g.x}" y="${(g.y-g.R-58).toFixed(0)}">${esc(g.name)}</text>
+        <text class="glbl-en" x="${g.x}" y="${(g.y-g.R-34).toFixed(0)}">${esc(g.code)}</text>
+        <text class="glbl-cnt" x="${g.x}" y="${(g.y-g.R-16).toFixed(0)}" data-cnt="${g.key}">${items.length} 颗星球</text>
+      </g>`;
+    s+=`</g>`;
+    out+=s;
+  }
+  return { defs, out, orbs };
+}
+
+/* ---------------- 绘制 ---------------- */
+let K=1, TX=0, TY=0;
+
+/* ---------------- 环绕动画 ---------------- */
+let ORB=[], animOn=false, hoverId=null, lastT=0;
+function ringSpeed(ring){ return 2.2/(1+ring*0.55); }   // 度/秒：内圈快、外圈慢，整体缓慢
+function applyOrb(o){
+  const rad=o.ang*Math.PI/180;
+  const ex=Math.cos(rad)*o.rx, ey=Math.sin(rad)*o.ry;
+  o.px=o.gx + ex*o.cosT - ey*o.sinT;
+  o.py=o.gy + ex*o.sinT + ey*o.cosT;
+  if(o.el) o.el.setAttribute('transform',`translate(${(o.px-o.bx).toFixed(1)} ${(o.py-o.by).toFixed(1)})`);
+}
+function orbStep(t){
+  const dt=Math.min(0.06, (t-(lastT||t))/1000);
+  lastT=t;
+  for(const o of ORB){
+    if(!o.el || o.id===hoverId) continue;   // 悬停中的星球暂停环绕
+    o.ang+=o.w*dt;
+    applyOrb(o);
+  }
+  requestAnimationFrame(orbStep);
+}
+function hitPlanet(cx,cy){
+  let hit=null, best=1e9;
+  for(const o of ORB){
+    const x=o.px*K+TX, y=o.py*K+TY;
+    const r=Math.max(o.r*K*1.7, 16);
+    const d=Math.hypot(cx-x, cy-y);
+    if(d<=r && d<best){ best=d; hit=o; }
+  }
+  return hit;
+}
+function paint(){
+  const bg=bgLayers(), w=buildWorld();
+  const svg=$('#stage');
+  svg.innerHTML = `<defs>${bg.defs}${w.defs}</defs>
+    <g id="layerFar">${bg.far}</g>
+    <g id="layerDust">${bg.dust}</g>
+    <g id="world">${w.out}</g>
+    <g id="layerNear">${bg.near}</g>`;
+  const prev=new Map(ORB.map(o=>[o.id,o.ang]));
+  ORB = w.orbs.map(o=>{
+    const el=svg.querySelector(`.pt[data-id="${o.id}"]`);
+    if(el && o.id===hoverId) el.classList.add('hover');
+    const rec={...o, el};
+    if(prev.has(o.id)) rec.ang=prev.get(o.id);   // 沿用当前相位，重绘时不跳回起始角
+    applyOrb(rec);
+    return rec;
+  });
+  lastT=0;
+  if(!animOn){ animOn=true; requestAnimationFrame(orbStep); }
+  $('#zInfo').textContent = Math.round(K*100)+'%';
+}
+function applyView(){
+  const g=(id,ox,oy,sk)=>{ const el=document.getElementById(id); if(el) el.setAttribute('transform',`translate(${(TX*ox).toFixed(2)} ${(TY*oy).toFixed(2)}) scale(${(K*sk).toFixed(4)})`); };
+  g('world',1,1,1);
+  g('layerFar',0.5,0.5,0.66);
+  g('layerDust',0.78,0.78,0.86);
+  g('layerNear',1.35,1.35,1.18);
+  $('#stageWrap').style.setProperty('--k', K);
+  const wrap=$('#stageWrap');
+  wrap.classList.toggle('zoomed-out', K<0.38 || labelsOff);
+  $('#zInfo').textContent = Math.round(K*100)+'%';
+}
+function centerOn(wx,wy,k){ K=k; TX=(innerWidth/2)-wx*k; TY=(innerHeight/2)-wy*k; applyView(); }
+function fitBounds(minX,minY,maxX,maxY,pad=140){
+  const w=maxX-minX+pad*2, h=maxY-minY+pad*2;
+  const k=Math.max(0.16, Math.min(1.1, Math.min(innerWidth/w, innerHeight/h)));
+  centerOn((minX+maxX)/2,(minY+maxY)/2,k);
+}
+function clusterBounds(g){ return [g.x-g.R-260, g.y-g.R*ELL-190, g.x+g.R+260, g.y+g.R*ELL+190]; }
+function fitAll(){
+  const used=new Set(planets.map(p=>p.galaxy));
+  const gs=GALAXIES.filter(g=>used.has(g.key));
+  if(!gs.length){ centerOn(2560,2060,0.5); return; }
+  let b=[1e9,1e9,-1e9,-1e9];
+  gs.forEach(g=>{ const c=clusterBounds(g); b=[Math.min(b[0],c[0]),Math.min(b[1],c[1]),Math.max(b[2],c[2]),Math.max(b[3],c[3])]; });
+  fitBounds(b[0],b[1],b[2],b[3], 180);
+}
+function flyTo(wx,wy,k,ms=520){
+  const k0=K, x0=TX, y0=TY;
+  const k1=k, x1=innerWidth/2-wx*k, y1=innerHeight/2-wy*k;
+  const t0=performance.now();
+  (function step(t){
+    const u=Math.min(1,(t-t0)/ms), e=u<0.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+    K=k0+(k1-k0)*e; TX=x0+(x1-x0)*e; TY=y0+(y1-y0)*e; applyView();
+    if(u<1) requestAnimationFrame(step);
+  })(t0);
+}
+function planetScreenPos(id){
+  const o=ORB.find(x=>x.id===id);
+  if(o) return [o.px, o.py];            // 取环绕动画后的实时位置
+  const el=document.querySelector(`.pt[data-id="${id}"] .pt-body`);
+  if(!el) return null;
+  return [Number(el.getAttribute('cx')), Number(el.getAttribute('cy'))];
+}
+const MIN_K=0.16, MAX_K=3;
+
+/* ---------------- 目录面板 ---------------- */
+let filtered=[];
+function visiblePlanets(){
+  const q=$('#searchInput').value.trim().toLowerCase();
+  if(!q) return planets.slice();
+  return planets.filter(p=>{
+    const hay=[p.name,(p.tags||[]).join(' '),p.content,GALAXY_MAP[p.galaxy]?.name].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+function renderDir(){
+  const list=$('#dirList'), vis=visiblePlanets();
+  $('#dirCnt').textContent = vis.length===planets.length ? planets.length+' OBJECTS' : vis.length+' / '+planets.length;
+  const q=$('#searchInput').value.trim();
+  if(!vis.length){
+    list.innerHTML=`<div class="dir-empty">${q?`没有找到「${esc(q)}」相关的星球`:'星图还是空的，点击「＋ 新建星球」点亮第一颗'}</div>`;
+    return;
+  }
+  const byGal={}; vis.forEach(p=>{ (byGal[p.galaxy]=byGal[p.galaxy]||[]).push(p); });
+  let i=0;
+  list.innerHTML = GALAXIES.filter(g=>byGal[g.key]?.length).map(g=>{
+    const items=byGal[g.key].slice().sort((a,b)=>b.updatedAt-a.updatedAt);
+    return `<div class="grp" style="${galaxyVar(g)}">
+      <div class="grp-head"><i></i>${esc(g.name)}<span>${esc(g.code)} · ${items.length}</span></div>
+      ${items.map(p=>{ i++; return `<div class="item${openId===p.id?' on':''}" data-id="${p.id}">
+        <span class="no">${String(i).padStart(2,'0')}</span>
+        <span class="tx">${esc(p.name)}</span>
+        ${isPending(p)?'<span class="gt">检索中</span>':''}
+      </div>`; }).join('')}
+    </div>`;
+  }).join('');
+}
+function applyFilter(){
+  const vis=visiblePlanets(), ids=new Set(vis.map(p=>p.id));
+  document.querySelectorAll('.pt').forEach(el=>{
+    el.classList.toggle('dim', !ids.has(el.dataset.id));
+  });
+  // 星系数量提示
+  document.querySelectorAll('[data-cnt]').forEach(el=>{
+    const key=el.dataset.cnt;
+    const all=planets.filter(p=>p.galaxy===key).length;
+    const hit=vis.filter(p=>p.galaxy===key).length;
+    const g=GALAXY_MAP[key];
+    el.textContent = (hit===all) ? `${all} 颗星球` : `匹配 ${hit} / ${all}`;
+  });
+  const q=$('#searchInput').value.trim();
+  const fb=$('#focusBtn');
+  if(q && vis.length){ fb.classList.remove('hidden'); $('#focusTxt').textContent=`${vis.length} 颗`; }
+  else fb.classList.add('hidden');
+}
+
+/* ---------------- 详情面板 ---------------- */
+let openId=null, editing=false, draftTags=[];
+function sections(content){
+  return String(content||'').split('\n').map(s=>s.trim()).filter(Boolean).slice(0,16).map((line,i)=>{
+    const label = /^【[^】]+】/.test(line) ? line.replace(/^【([^】]+)】.*/,'$1') : line.replace(/^[·•\-*]\s*/,'');
+    return { no:String(i+1).padStart(2,'0'), text:line, label:clamp(label,15) };
+  });
+}
+function renderDetail(){
+  const p=planets.find(x=>x.id===openId); if(!p) return;
+  const g=GALAXY_MAP[p.galaxy]||GALAXY_MAP.misc;
+  const hue=planetHue(g,p.name);
+  $('#dCrumb').innerHTML=`知识档案 · <b>PLANET</b> · ${esc(g.name)}`;
+  $('#detail').style.setProperty('--gh', `hsl(${hue} 82% 62%)`);
+  const secs=sections(p.content);
+  $('#dTocN').textContent=secs.length;
+  $('#dTocList').innerHTML = secs.map((s,i)=>{
+    const on = (i===tocActive) ? ' on':'';
+    return `<div class="item${on}" data-toc="${i}"><span class="no">${s.no}</span><span class="tx">${esc(s.label)}</span></div>`;
+  }).join('') || '<div class="dir-empty">暂无内容</div>';
+
+  const srcTxt = p.source==='wiki'
+    ? `内容来源 · ${esc(p.sourceLabel||'公开资料')}${p.wikiTitle?` · 词条「${esc(p.wikiTitle)}」`:''}`
+    : p.source==='manual' ? '内容来源 · 手动撰写'
+    : p.source==='seed' ? '内容来源 · 示例数据'
+    : '内容来源 · 待检索';
+
+  let html=`<div class="hero">
+      <span class="bar"></span>
+      <div style="flex:1;min-width:0">
+        <div class="en">${esc(g.code)}</div>
+        <h2>${esc(p.name)}</h2>
+        <div class="sys">${esc(g.name)}星系 · ${(p.tags||[]).length} 个标签 · 更新于 ${fmtTime(p.updatedAt)}</div>
+      </div>
+      <svg class="xhair" id="dXhair" viewBox="0 0 40 40" title="定位到星图">
+        <circle cx="20" cy="20" r="12"/><path d="M20 3v8M20 29v8M3 20h8M29 20h8"/>
+      </svg>
+    </div>
+    <div class="tags">${(p.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`;
+
+  if(!editing){
+    html+=`<div class="sec"><div class="sec-h">知识内容</div>`;
+    html += secs.length ? secs.map((s,i)=>
+        `<p class="p${i===tocActive?' mark':''}" data-sec="${i}">${esc(s.text)}</p>`
+      ).join('')
+      : `<p class="p" style="color:#8b93ab">这颗星球还没有内容，点击「编辑内容」写下它，或用「重新检索」自动获取。</p>`;
+    html+=`</div>`;
+    html+=`<div class="card">
+        <div class="card-h">观察这个星球</div>
+        <div class="btns">
+          <button class="b accent" data-act="edit">编辑内容</button>
+          <button class="b" data-act="regen">重新检索</button>
+          <button class="b" data-act="locate">定位到星图</button>
+        </div>
+      </div>`;
+    html+=`<div class="src">${srcTxt}<br>创建于 ${fmtTime(p.createdAt)} · 更新于 ${fmtTime(p.updatedAt)}`
+      +(p.wikiUrl?`<br><a href="${esc(p.wikiUrl)}" target="_blank" rel="noopener">查看完整词条原文 ↗</a>`:'')+`</div>`;
+  }else{
+    html+=`<div class="form">
+      <div class="f"><label>星球名称</label><input type="text" id="fName" value="${esc(p.name)}"></div>
+      <div class="f"><label>所属星系</label><select id="fGalaxy">${GALAXIES.map(x=>`<option value="${x.key}"${x.key===p.galaxy?' selected':''}>${esc(x.name)}星系 · ${esc(x.code)}</option>`).join('')}</select></div>
+      <div class="f"><label>星球标签（回车添加，点 × 删除）</label>
+        <div class="tagbox" id="fTagBox"><input type="text" id="fTagInput" placeholder="添加标签…"></div></div>
+      <div class="f"><label>知识内容</label><textarea id="fContent">${esc(p.content)}</textarea></div>
+      <div class="btns">
+        <button class="b accent" data-act="save">保存修改</button>
+        <button class="b" data-act="cancel">取消</button>
+        <button class="b danger" data-act="del">删除星球</button>
+      </div>
+    </div>`;
+    html+=`<div class="src">${srcTxt}</div>`;
+  }
+  $('#dMain').innerHTML=html;
+  if(editing) renderTagBox();
+}
+let tocActive=0;
+function renderTagBox(){
+  const box=$('#fTagBox'); if(!box) return;
+  const input=$('#fTagInput');
+  box.querySelectorAll('.tg').forEach(n=>n.remove());
+  draftTags.forEach((t,i)=>{
+    const el=document.createElement('span');
+    el.className='tg';
+    el.innerHTML=`${esc(t)}<b data-i="${i}">×</b>`;
+    box.insertBefore(el,input);
+  });
+}
+function openDetail(id, fly){
+  openId=id; editing=false; tocActive=0;
+  const p=planets.find(x=>x.id===id); if(!p) return;
+  renderDetail(); renderDir();
+  $('#detail').classList.add('on');
+  $('#dStatus').textContent='';
+  if(fly){
+    const pos=planetScreenPos(id);
+    if(pos) flyTo(pos[0], pos[1], Math.max(K,0.95));
+  }
+}
+function closeDetail(){
+  $('#detail').classList.remove('on');
+  openId=null; editing=false; renderDir();
+}
+function sibling(dir){
+  const p=planets.find(x=>x.id===openId); if(!p) return;
+  const same=planets.filter(x=>x.galaxy===p.galaxy).sort((a,b)=>b.updatedAt-a.updatedAt);
+  if(same.length<2) return;
+  const i=same.findIndex(x=>x.id===p.id);
+  const n=same[(i+dir+same.length)%same.length];
+  openDetail(n.id, true);
+}
+
+/* ---------------- 创建星球 ---------------- */
+async function createPlanet(){
+  const name=$('#cName').value.trim();
+  if(!name){ toast('请先输入一个知识标签'); $('#cName').focus(); return; }
+  const dup=planets.find(p=>p.name===name);
+  if(dup){ closeCreator(); openDetail(dup.id,true); toast('这颗星球已存在，已为你定位'); return; }
+  const manual=$('#cContent').value.trim();
+  const galaxyKey=$('#cGalaxy').value || autoClassify(name);
+  const mode=$('#cMode').value;
+  const now=Date.now();
+  const p={ id:uid(), name, galaxy:galaxyKey, tags:autoTags(name,galaxyKey,[]),
+    content: manual || (mode==='manual' ? '' : '内容检索中…'),
+    source: (manual||mode==='manual') ? 'manual' : 'pending',
+    createdAt:now, updatedAt:now };
+  planets.push(p); save(); paint(); applyView(); renderDir(); applyFilter();
+  closeCreator();
+  const g=GALAXY_MAP[galaxyKey];
+  flyTo(g.x, g.y, Math.max(K,0.62), 620);
+  toast(`已生成「${name}」，归入 ${g.name}星系`);
+  if(p.source==='pending'){
+    await fillByApi(p.id);
+    const pos=planetScreenPos(p.id);
+    if(pos) flyTo(pos[0],pos[1],0.95);
+  }
+  openDetail(p.id, true);
+}
+async function fillByApi(id){
+  const p=planets.find(x=>x.id===id); if(!p) return;
+  p.source='pending'; save(); paint(); applyView(); renderDir();
+  if(openId===id) setStatus('正在检索…');
+  try{
+    const r=await fetchKnowledge(p.name);
+    if(r){
+      p.content=r.content; p.wikiTitle=r.title; p.wikiUrl=r.url; p.sourceLabel=r.sourceLabel; p.source='wiki';
+      if(r.title && !(p.tags||[]).includes(r.title)) p.tags=[...(p.tags||[]),r.title].slice(0,6);
+      if(openId===id) setStatus('已检索到内容 ✓','ok');
+      toast(`「${p.name}」内容已自动填充`);
+    }else{
+      p.content=fallbackContent(p.name,p.galaxy); p.source='manual';
+      if(openId===id) setStatus('未检索到资料，已给出写作提纲','err');
+      toast('未检索到公开资料，已生成写作提纲');
+    }
+  }catch(e){
+    p.content=fallbackContent(p.name,p.galaxy); p.source='manual';
+    if(openId===id) setStatus('检索失败：'+(e.message||'网络异常'),'err');
+  }
+  p.updatedAt=Date.now(); save(); paint(); applyView(); renderDir();
+  if(openId===id){ draftTags=[...(p.tags||[])]; renderDetail(); }
+}
+function setStatus(t,cls){ const el=$('#dStatus'); if(!el) return; el.textContent=t; el.className='d-status'+(cls?' '+cls:''); }
+
+/* ---------------- 交互 ---------------- */
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2400);
+}
+function openCreator(){
+  $('#creator').classList.add('on');
+  if($('#detail').classList.contains('on')) closeDetail();
+  const p=planets[planets.length-1];
+  if(p) $('#cGalaxy').value=''; 
+  $('#cName').value=''; $('#cContent').value='';
+  setTimeout(()=>$('#cName').focus(), 60);
+}
+function closeCreator(){ $('#creator').classList.remove('on'); }
+
+let drag=null, pointers=new Map(), pinch=null, lastUpAt=0;
+function bindView(){
+  const wrap=$('#stageWrap');
+  // 悬停：暂停该星球的环绕，便于看清标签与点击
+  const setHover=id=>{
+    if((id||null)===hoverId) return;
+    const prev=ORB.find(o=>o.id===hoverId); if(prev&&prev.el) prev.el.classList.remove('hover');
+    hoverId=id||null;
+    const cur=ORB.find(o=>o.id===hoverId); if(cur&&cur.el) cur.el.classList.add('hover');
+    wrap.style.cursor = hoverId ? 'pointer' : '';
+  };
+  wrap.addEventListener('pointerdown', e=>{
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    wrap.setPointerCapture(e.pointerId);
+    if(pointers.size===1){ drag={x:e.clientX,y:e.clientY,moved:0,tx:TX,ty:TY}; wrap.style.cursor=''; wrap.classList.add('dragging'); }
+    else if(pointers.size===2){ drag=null; const [a,b]=[...pointers.values()];
+      pinch={ d:Math.hypot(a.x-b.x,a.y-b.y), k:K, cx:(a.x+b.x)/2, cy:(a.y+b.y)/2, tx:TX, ty:TY }; }
+  });
+  wrap.addEventListener('pointermove', e=>{
+    if(!pointers.has(e.pointerId)){                 // 未按下：纯悬停
+      setHover((hitPlanet(e.clientX,e.clientY)||{}).id || null);
+      return;
+    }
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pinch && pointers.size===2){
+      const [a,b]=[...pointers.values()];
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      const k2=Math.max(MIN_K,Math.min(MAX_K, pinch.k*(d/pinch.d)));
+      const cx=(a.x+b.x)/2, cy=(a.y+b.y)/2;
+      // 以双指中点为中心缩放
+      TX = pinch.tx + (1-k2/pinch.k)*(cx-pinch.tx);
+      TY = pinch.ty + (1-k2/pinch.k)*(cy-pinch.ty);
+      K=k2; applyView(); return;
+    }
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    drag.moved=Math.max(drag.moved, Math.abs(dx)+Math.abs(dy));
+    TX=drag.tx+dx; TY=drag.ty+dy; applyView();
+  });
+  wrap.addEventListener('pointerup', e=>{
+    const wasDrag=drag && drag.moved>6;
+    lastUpAt=Date.now();
+    pointers.delete(e.pointerId);
+    if(pointers.size<2) pinch=null;
+    if(pointers.size===0){
+      wrap.classList.remove('dragging');
+      if(!wasDrag) handleClick(e.clientX,e.clientY);
+      drag=null;
+    }
+  });
+  // 兜底：某些环境只派发 click 而不派发 pointer 事件，此时由 click 处理器接管
+  wrap.addEventListener('click', e=>{
+    if(e.detail===0) return;
+    if(Date.now()-lastUpAt < 500) return;
+    handleClick(e.clientX,e.clientY);
+  });
+  wrap.addEventListener('pointercancel', e=>{ pointers.delete(e.pointerId); pinch=null; drag=null; wrap.classList.remove('dragging'); });
+  wrap.addEventListener('pointerleave', ()=>{ setHover(null); });
+  wrap.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const f=Math.exp(-e.deltaY*0.0016);
+    zoomAt(e.clientX, e.clientY, Math.max(MIN_K,Math.min(MAX_K,K*f)));
+  }, {passive:false});
+}
+function zoomAt(cx,cy,k2){
+  const k1=K;
+  TX = cx - (cx-TX)*(k2/k1);
+  TY = cy - (cy-TY)*(k2/k1);
+  K=k2; applyView();
+}
+function handleClick(cx,cy){
+  // 星球：几何命中（按环绕动画的实时坐标换算屏幕坐标），低倍率下也能点中
+  const o=hitPlanet(cx,cy);
+  if(o){ openDetail(o.id); return; }
+  // 星系标签 / 空白
+  const el=document.elementFromPoint(cx,cy);
+  const gl=el && el.closest && el.closest('.glabel');
+  if(gl){ const g=GALAXY_MAP[gl.dataset.gal]; if(g){ flyTo(g.x,g.y,0.72); return; } }
+  if($('#detail').classList.contains('on')) closeDetail();
+}
+
+function bindUI(){
+  const si=$('#searchInput');
+  si.addEventListener('input', ()=>{ applyFilter(); renderDir(); });
+  si.addEventListener('keydown', e=>{ if(e.key==='Escape'){ si.value=''; applyFilter(); renderDir(); si.blur(); } });
+
+  $('#newBtn').onclick=openCreator;
+  $('#dirBtn').onclick=()=>{
+    const d=$('#dir'), on=!d.classList.contains('hidden');
+    d.classList.toggle('hidden', on); $('#dirTxt').textContent = on?'隐藏':'显示';
+    $('#dirTxt').classList.toggle('on', !on);
+  };
+  $('#lblBtn').onclick=()=>{
+    labelsOff=!labelsOff; $('#lblTxt').textContent=labelsOff?'隐藏':'显示';
+    $('#lblTxt').classList.toggle('on', !labelsOff); applyView();
+  };
+  $('#focusBtn').onclick=()=>{
+    const vis=visiblePlanets(); if(!vis.length) return;
+    let b=[1e9,1e9,-1e9,-1e9];
+    vis.forEach(p=>{ const pos=planetScreenPos(p.id)||[GALAXY_MAP[p.galaxy].x, GALAXY_MAP[p.galaxy].y];
+      b=[Math.min(b[0],pos[0]),Math.min(b[1],pos[1]),Math.max(b[2],pos[0]),Math.max(b[3],pos[1])]; });
+    fitBounds(b[0],b[1],b[2],b[3], 220);
+  };
+  $('#zIn').onclick=()=>zoomAt(innerWidth/2, innerHeight/2, Math.min(MAX_K,K*1.28));
+  $('#zOut').onclick=()=>zoomAt(innerWidth/2, innerHeight/2, Math.max(MIN_K,K/1.28));
+  $('#zFit').onclick=fitAll;
+
+  $('#cCreate').onclick=createPlanet;
+  $('#cName').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); createPlanet(); } });
+  $('#cMode').onchange=e=>{
+    const m=e.target.value==='manual'; $('#cContent').style.display = m?'block':'none';
+    if(m) $('#cContent').focus();
+  };
+  const samples=['苏轼的诗歌风格','量子纠缠','印象派绘画','存在主义','发酵与风味','丝绸之路'];
+  $('#cChips').innerHTML=samples.map(s=>`<span class="chip">${s}</span>`).join('');
+  $('#cChips').onclick=e=>{ const c=e.target.closest('.chip'); if(!c) return; $('#cName').value=c.textContent; $('#cName').focus(); };
+
+  $('#dClose').onclick=closeDetail;
+  $('#dPrev').onclick=()=>sibling(-1);
+  $('#dNext').onclick=()=>sibling(1);
+  $('#dLocate').onclick=()=>{ const pos=planetScreenPos(openId); if(pos) flyTo(pos[0],pos[1],Math.max(K,1.0)); };
+  $('#dTocList').onclick=e=>{
+    const it=e.target.closest('[data-toc]'); if(!it) return;
+    tocActive=Number(it.dataset.toc); renderDetail();
+    const target=document.querySelector(`[data-sec="${tocActive}"]`);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+  $('#dirList').onclick=e=>{
+    const it=e.target.closest('.item'); if(!it) return; openDetail(it.dataset.id, true);
+  };
+  $('#dMain').addEventListener('click', e=>{
+    if(e.target.closest('#dXhair') || e.target.closest('[data-act="locate"]')){
+      const pos=planetScreenPos(openId); if(pos) flyTo(pos[0],pos[1],Math.max(K,1.0)); return;
+    }
+    const b=e.target.closest('[data-act]'); if(!b) return;
+    const p=planets.find(x=>x.id===openId); if(!p) return;
+    const act=b.dataset.act;
+    if(act==='edit'){ editing=true; draftTags=[...(p.tags||[])]; renderDetail(); }
+    if(act==='cancel'){ editing=false; renderDetail(); }
+    if(act==='save'){
+      const nm=$('#fName').value.trim()||p.name;
+      p.name=nm; p.galaxy=$('#fGalaxy').value; p.tags=draftTags.slice(); p.content=$('#fContent').value;
+      if(p.source==='pending') p.source='manual';
+      p.updatedAt=Date.now(); save(); paint(); applyView();
+      editing=false; renderDir(); renderDetail(); setStatus('已保存 ✓','ok'); toast('已保存修改');
+    }
+    if(act==='del'){
+      if(confirm(`确认让「${p.name}」从宇宙中消失？`)){
+        planets=planets.filter(x=>x.id!==p.id); save(); paint(); applyView(); closeDetail(); renderDir(); toast('星球已移除');
+      }
+    }
+    if(act==='regen'){
+      const nm=($('#fName')&&$('#fName').value.trim())||p.name;
+      p.name=nm; p.updatedAt=Date.now(); save();
+      setStatus('正在检索…'); fillByApi(p.id);
+    }
+  });
+  $('#dMain').addEventListener('keydown', e=>{
+    if(e.target.id==='fTagInput' && (e.key==='Enter'||e.key===','||e.key==='，')){
+      e.preventDefault();
+      const v=e.target.value.trim().replace(/[,，]/g,'');
+      if(v && !draftTags.includes(v)){ draftTags.push(v); renderTagBox(); }
+      e.target.value='';
+    }
+    if(e.target.id==='fTagInput' && e.key==='Backspace' && !e.target.value && draftTags.length){
+      draftTags.pop(); renderTagBox();
+    }
+  });
+  $('#dMain').addEventListener('click', e=>{
+    const b=e.target.closest('#fTagBox .tg b'); if(!b) return;
+    draftTags.splice(Number(b.dataset.i),1); renderTagBox();
+  }, true);
+
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ if($('#creator').classList.contains('on')) closeCreator(); else if(openId) closeDetail(); }
+    if(e.key==='+'||e.key==='=') zoomAt(innerWidth/2,innerHeight/2,Math.min(MAX_K,K*1.2));
+    if(e.key==='-') zoomAt(innerWidth/2,innerHeight/2,Math.max(MIN_K,K/1.2));
+    if(e.key==='0') fitAll();
+  });
+  addEventListener('resize', ()=>{ applyView(); });
+}
+
+/* ---------------- 启动 ---------------- */
+let labelsOff=false;
+function boot(){
+  $('#cGalaxy').innerHTML='<option value="">自动归类星系</option>'+GALAXIES.map(g=>`<option value="${g.key}">${g.name}星系 · ${g.code}</option>`).join('');
+  load(); bindUI(); bindView();
+  paint();
+  centerOn(2560, 1900, 0.46);   // 开篇停留在星系带上，保留「宇宙」宏观视野
+  applyView(); renderDir(); applyFilter();
+}
+boot();
+</script>
+</body>
+</html>
